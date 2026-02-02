@@ -10,7 +10,7 @@ from selenium.webdriver.common.action_chains import ActionChains
 # ❗ 请确保此路径与你本地匹配
 DRIVER_PATH = r"D:\py\chromedriver.exe"
 # 临时存放 TXT，主脚本会汇总它
-SAVE_PATH = r"D:\py\nbtv_live.txt"
+SAVE_PATH = "nbtv_live.txt"
 
 def run_capture(name, url):
     options = Options()
