@@ -7,25 +7,32 @@ from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
 from webdriver_manager.chrome import ChromeDriverManager
 
-# Remove D:\py\ - Use current directory for GitHub
+# 必须使用相对路径，不能带 D:\py\
 SAVE_PATH = "nbtv_live.txt"
 
 def run_capture(name, url):
+    # 提前创建文件，防止 Git 找不到文件而报错
+    if not os.path.exists(SAVE_PATH):
+        with open(SAVE_PATH, 'a') as f: pass
+
     options = Options()
     options.add_argument('--headless=new') 
     options.add_argument('--no-sandbox')
-    options.add_argument('--disable-dev-shm-usage') # Required for Docker/Linux
-    options.set_capability('goog:loggingPrefs', {'performance': 'ALL'})
-    options.add_argument('--autoplay-policy=no-user-gesture-required')
+    options.add_argument('--disable-dev-shm-usage') # Linux 容器必须加这个
     options.add_argument('--mute-audio')
-    options.add_argument('--blink-settings=imagesEnabled=false')
+    options.set_capability('goog:loggingPrefs', {'performance': 'ALL'})
+    # 模拟标准的 Linux Chrome 用户代理
     options.add_argument("user-agent=Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
 
     try:
-        # Automatically installs the correct Linux driver
-        driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+        # 自动安装 Linux 版驱动
+        service = Service(ChromeDriverManager().install())
+        driver = webdriver.Chrome(service=service, options=options)
         driver.get(url)
-        time.sleep(18) 
+        
+        # 增加等待时间，适应 GitHub 的慢速网络
+        print(f"正在抓取 {name}，请稍候...")
+        time.sleep(25) 
 
         logs = driver.get_log('performance')
         for entry in logs:
@@ -35,8 +42,11 @@ def run_capture(name, url):
                 if '.m3u8' in req_url and 'ncmc.nbtv.cn' in req_url:
                     with open(SAVE_PATH, "a", encoding="utf-8") as f:
                         f.write(f"{name},{req_url}\n")
-                    print(f"✅ Captured: {name}")
+                    print(f"✅ 捕获成功: {name}")
                     return
+        print(f"❌ 捕获失败: {name}")
+    except Exception as e:
+        print(f"⚠️ 运行出错: {e}")
     finally:
         if 'driver' in locals(): driver.quit()
 
