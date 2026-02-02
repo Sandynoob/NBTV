@@ -2,9 +2,8 @@ import subprocess
 import time
 import os
 
-# GitHub uses 'python' or 'python3'
+# GitHub 环境下直接用 python
 PYTHON_EXE = "python"
-# Relative paths for Linux compatibility
 TASK_SCRIPT = "get_nbtv_single.py"
 TXT_PATH = "nbtv_live.txt"
 M3U_PATH = "nbtv_live.m3u"
@@ -18,7 +17,7 @@ channels = [
 
 def convert_to_m3u():
     if not os.path.exists(TXT_PATH):
-        print("❌ No TXT found, skipping M3U conversion.")
+        print("⚠️ 未发现 TXT 结果文件。")
         return
     with open(TXT_PATH, "r", encoding="utf-8") as txt:
         lines = txt.readlines()
@@ -28,22 +27,22 @@ def convert_to_m3u():
             if "," in line:
                 name, url = line.strip().split(",", 1)
                 m3u.write(f"#EXTINF:-1,{name}\n{url}\n")
-    print(f"✨ M3U List Generated: {M3U_PATH}")
+    print(f"✨ M3U 文件已生成: {M3U_PATH}")
 
 if __name__ == "__main__":
     if os.path.exists(TXT_PATH): os.remove(TXT_PATH)
     
     start_time = time.time()
-    print("🚀 Starting Parallel Capture on GitHub Actions...")
+    print("🚀 启动串行抓取任务 (确保稳定性)...")
     
-    processes = []
     for ch in channels:
-        p = subprocess.Popen([PYTHON_EXE, TASK_SCRIPT, ch['name'], ch['url']])
-        processes.append(p)
-        time.sleep(1) # Slight stagger for stability
+        print(f"\n🎬 正在处理: {ch['name']}...")
+        # 使用 subprocess.run 确保当前进程结束后才开始下一个
+        subprocess.run([PYTHON_EXE, TASK_SCRIPT, ch['name'], ch['url']])
+        # 间隔 2 秒释放资源
+        time.sleep(2)
 
-    for p in processes:
-        p.wait()
-
+    # 转换结果
     convert_to_m3u()
-    print(f"⏱️ Total Time: {round(time.time() - start_time, 2)}s")
+    print(f"\n⏱️ 总耗时: {round(time.time() - start_time, 2)}s")
+
