@@ -2,7 +2,7 @@ import subprocess
 import time
 import os
 
-# GitHub 环境下直接用 python
+# GitHub Uses 'python'
 PYTHON_EXE = "python"
 TASK_SCRIPT = "get_nbtv_single.py"
 TXT_PATH = "nbtv_live.txt"
@@ -17,32 +17,38 @@ channels = [
 
 def convert_to_m3u():
     if not os.path.exists(TXT_PATH):
-        print("⚠️ 未发现 TXT 结果文件。")
+        print("⚠️ No results to convert.")
         return
+    
     with open(TXT_PATH, "r", encoding="utf-8") as txt:
         lines = txt.readlines()
+    
     with open(M3U_PATH, "w", encoding="utf-8") as m3u:
         m3u.write("#EXTM3U\n")
         for line in lines:
             if "," in line:
                 name, url = line.strip().split(",", 1)
                 m3u.write(f"#EXTINF:-1,{name}\n{url}\n")
-    print(f"✨ M3U 文件已生成: {M3U_PATH}")
+    print(f"✨ M3U File Generated: {M3U_PATH}")
 
 if __name__ == "__main__":
+    # Cleanup old files
     if os.path.exists(TXT_PATH): os.remove(TXT_PATH)
     
     start_time = time.time()
-    print("🚀 启动串行抓取任务 (确保稳定性)...")
+    print("🚀 Starting Parallel Scraper...")
     
+    processes = []
     for ch in channels:
-        print(f"\n🎬 正在处理: {ch['name']}...")
-        # 使用 subprocess.run 确保当前进程结束后才开始下一个
-        subprocess.run([PYTHON_EXE, TASK_SCRIPT, ch['name'], ch['url']])
-        # 间隔 2 秒释放资源
-        time.sleep(2)
+        # Launch independent processes
+        p = subprocess.Popen([PYTHON_EXE, TASK_SCRIPT, ch['name'], ch['url']])
+        processes.append(p)
+        time.sleep(1) # Small stagger for stability
 
-    # 转换结果
+    # Wait for all processes to finish
+    for p in processes:
+        p.wait()
+
+    # Convert TXT to M3U
     convert_to_m3u()
-    print(f"\n⏱️ 总耗时: {round(time.time() - start_time, 2)}s")
-
+    print(f"⏱️ Finished in {round(time.time() - start_time, 2)}s")
