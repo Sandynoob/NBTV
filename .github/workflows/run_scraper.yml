@@ -2,39 +2,50 @@ name: NBTV Live Scraper
 
 on:
   schedule:
-    # 每天 UTC 0:00 执行一次 (北京时间 08:00)
+    # Runs every 24 hours at 00:00 UTC (08:00 AM Beijing Time)
     - cron: '0 0 * * *'
-  workflow_dispatch: # 允许你在 GitHub 页面手动点击 "Run workflow" 测试
+  workflow_dispatch: # Allows manual triggering from the Actions tab
 
 jobs:
   scrape:
-    runs-on: ubuntu-latest # 使用 Linux 虚拟机
+    runs-on: ubuntu-latest
     
+    # Required to fix Exit Code 128 (Write Permission)
+    permissions:
+      contents: write
+
     steps:
-      - name: 检出代码
+      - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: 安装 Python
+      - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.9'
 
-      - name: 安装 Chrome 和依赖
+      - name: Install Chrome and Dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y google-chrome-stable
           python -m pip install --upgrade pip
           pip install selenium webdriver-manager
 
-      - name: 执行抓取脚本
-        # 即使加密软件在本地限制了 bat，Linux 环境下直接运行 python 没问题
+      - name: Run Scraper
+        # This will run your master_run.py which triggers get_nbtv_single.py
         run: python master_run.py
 
-      - name: 提交并推送结果
-        # 自动将生成的 nbtv_live.txt 和 nbtv_live.m3u 存回仓库
+      - name: Commit and Push Results
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
+          
+          # Add the generated files
           git add nbtv_live.txt nbtv_live.m3u
-          git commit -m "自动更新直播源: $(date +'%Y-%m-%d %H:%M:%S')" || exit 0
-          git push
+          
+          # Only commit if there are actual changes to prevent erroring out
+          if git diff --staged --quiet; then
+            echo "No changes detected in IPTV lists. Skipping commit."
+          else
+            git commit -m "Auto-update IPTV list: $(date +'%Y-%m-%d %H:%M:%S')"
+            git push
+          fi
