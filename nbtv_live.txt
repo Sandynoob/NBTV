@@ -1,0 +1,4 @@
+NBTV1-新闻综合,https://liveplay8.nbtv.cn/live/nbtv1_md.m3u8
+NBTV2-经济生活,https://liveplay8.nbtv.cn/live/nbtv2_md.m3u8
+NBTV3-都市文体,https://liveplay8.nbtv.cn/live/nbtv3_md.m3u8
+NBTV4-影视剧,https://liveplay8.nbtv.cn/live/nbtv4_md.m3u8
