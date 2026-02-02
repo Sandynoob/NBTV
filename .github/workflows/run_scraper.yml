@@ -4,13 +4,13 @@ on:
   schedule:
     # Runs every 24 hours at 00:00 UTC (08:00 AM Beijing Time)
     - cron: '0 0 * * *'
-  workflow_dispatch: # Allows manual triggering from the Actions tab
+  workflow_dispatch: # Allows you to click "Run workflow" manually to test
 
 jobs:
   scrape:
     runs-on: ubuntu-latest
     
-    # Required to fix Exit Code 128 (Write Permission)
+    # Critical: Grant Write Permission to the Action Bot
     permissions:
       contents: write
 
@@ -31,20 +31,24 @@ jobs:
           pip install selenium webdriver-manager
 
       - name: Run Scraper
-        # This will run your master_run.py which triggers get_nbtv_single.py
+        # This executes your parallel master script
         run: python master_run.py
 
       - name: Commit and Push Results
         run: |
+          # 1. Identity Setup
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
           
-          # Add the generated files
+          # 2. Safety Step: Ensure files exist so 'git add' never fails (Fixes Error 128)
+          touch nbtv_live.txt nbtv_live.m3u
+          
+          # 3. Stage files
           git add nbtv_live.txt nbtv_live.m3u
           
-          # Only commit if there are actual changes to prevent erroring out
+          # 4. Conditional Commit: Only push if content actually changed
           if git diff --staged --quiet; then
-            echo "No changes detected in IPTV lists. Skipping commit."
+            echo "No changes detected. Skipping push."
           else
             git commit -m "Auto-update IPTV list: $(date +'%Y-%m-%d %H:%M:%S')"
             git push
