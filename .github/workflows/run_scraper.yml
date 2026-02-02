@@ -1,55 +1,30 @@
-name: NBTV Live Scraper
+name: NBTV Scraper
 
 on:
   schedule:
-    # Runs every 24 hours at 00:00 UTC (08:00 AM Beijing Time)
     - cron: '0 0 * * *'
-  workflow_dispatch: # Allows you to click "Run workflow" manually to test
+  workflow_dispatch:
 
 jobs:
-  scrape:
+  build:
     runs-on: ubuntu-latest
-    
-    # Critical: Grant Write Permission to the Action Bot
     permissions:
       contents: write
-
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-
-      - name: Setup Python
+      - uses: actions/checkout@v4
+      - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.9'
-
-      - name: Install Chrome and Dependencies
+      - name: Install dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install -y google-chrome-stable
-          python -m pip install --upgrade pip
           pip install selenium webdriver-manager
-
       - name: Run Scraper
-        # This executes your parallel master script
         run: python master_run.py
-
-      - name: Commit and Push Results
+      - name: Commit and Push
         run: |
-          # 1. Identity Setup
-          git config --local user.email "github-actions[bot]@users.noreply.github.com"
-          git config --local user.name "github-actions[bot]"
-          
-          # 2. Safety Step: Ensure files exist so 'git add' never fails (Fixes Error 128)
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
           touch nbtv_live.txt nbtv_live.m3u
-          
-          # 3. Stage files
           git add nbtv_live.txt nbtv_live.m3u
-          
-          # 4. Conditional Commit: Only push if content actually changed
-          if git diff --staged --quiet; then
-            echo "No changes detected. Skipping push."
-          else
-            git commit -m "Auto-update IPTV list: $(date +'%Y-%m-%d %H:%M:%S')"
-            git push
-          fi
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Update IPTV List" && git push)
