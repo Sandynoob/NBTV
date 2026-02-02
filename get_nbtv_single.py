@@ -9,10 +9,10 @@ TXT_PATH = "nbtv_live.txt"
 M3U_PATH = "nbtv_live.m3u"
 
 channels = [
-    {"name": "NBTV1-新闻综合", "url": "https://www.ncmc.nbtv.cn"},
-    {"name": "NBTV2-经济生活", "url": "https://www.ncmc.nbtv.cn"},
-    {"name": "NBTV3-都市文体", "url": "https://www.ncmc.nbtv.cn"},
-    {"name": "NBTV4-影视剧", "url": "https://www.ncmc.nbtv.cn"},
+    {"name": "NBTV1-新闻综合", "url": "https://www.ncmc.nbtv.cn/gbds/folder8458/NBTV1/index.shtml"},
+    {"name": "NBTV2-经济生活", "url": "https://www.ncmc.nbtv.cn/gbds/folder8458/NBTV2/index.shtml"},
+    {"name": "NBTV3-都市文体", "url": "https://www.ncmc.nbtv.cn/gbds/folder8458/NBTV3/index.shtml"},
+    {"name": "NBTV4-影视剧", "url": "https://www.ncmc.nbtv.cn/gbds/folder8458/NBTV4/index.shtml"},
 ]
 
 def convert_to_m3u():
