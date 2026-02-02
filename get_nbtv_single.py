@@ -1,54 +1,62 @@
-import subprocess
+import sys
+import json
 import time
 import os
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.action_chains import ActionChains
+from webdriver_manager.chrome import ChromeDriverManager
 
-# GitHub Uses 'python'
-PYTHON_EXE = "python"
-TASK_SCRIPT = "get_nbtv_single.py"
-TXT_PATH = "nbtv_live.txt"
-M3U_PATH = "nbtv_live.m3u"
+SAVE_PATH = "nbtv_live.txt"
 
-channels = [
-    {"name": "NBTV1-新闻综合", "url": "https://www.ncmc.nbtv.cn/gbds/folder8458/NBTV1/index.shtml"},
-    {"name": "NBTV2-经济生活", "url": "https://www.ncmc.nbtv.cn/gbds/folder8458/NBTV2/index.shtml"},
-    {"name": "NBTV3-都市文体", "url": "https://www.ncmc.nbtv.cn/gbds/folder8458/NBTV3/index.shtml"},
-    {"name": "NBTV4-影视剧", "url": "https://www.ncmc.nbtv.cn/gbds/folder8458/NBTV4/index.shtml"},
-]
+def run_capture(name, url):
+    options = Options()
+    options.add_argument('--headless=new') 
+    options.add_argument('--no-sandbox')
+    options.add_argument('--disable-dev-shm-usage') # Linux 必须：防止内存崩溃
+    options.add_argument('--mute-audio')
+    options.set_capability('goog:loggingPrefs', {'performance': 'ALL'})
+    options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
 
-def convert_to_m3u():
-    if not os.path.exists(TXT_PATH):
-        print("⚠️ No results to convert.")
-        return
-    
-    with open(TXT_PATH, "r", encoding="utf-8") as txt:
-        lines = txt.readlines()
-    
-    with open(M3U_PATH, "w", encoding="utf-8") as m3u:
-        m3u.write("#EXTM3U\n")
-        for line in lines:
-            if "," in line:
-                name, url = line.strip().split(",", 1)
-                m3u.write(f"#EXTINF:-1,{name}\n{url}\n")
-    print(f"✨ M3U File Generated: {M3U_PATH}")
+    driver = None
+    try:
+        service = Service(ChromeDriverManager().install())
+        driver = webdriver.Chrome(service=service, options=options)
+        # 设置页面加载超时，防止永久卡死
+        driver.set_page_load_timeout(40)
+        
+        driver.get(url)
+        time.sleep(5) 
+        
+        try:
+            # 尝试点击页面激活播放器
+            ActionChains(driver).move_by_offset(100, 100).click().perform()
+        except:
+            pass
+
+        # 等待流量生成
+        print(f"   [子进程] 正在分析 {name} 的网络包...")
+        time.sleep(25) 
+
+        logs = driver.get_log('performance')
+        for entry in logs:
+            log_data = json.loads(entry['message'])['message']
+            if log_data['method'] == 'Network.requestWillBeSent':
+                req_url = log_data['params']['request']['url']
+                # 寻找带 auth_key 的完整 m3u8
+                if '.m3u8' in req_url and 'nbtv.cn' in req_url:
+                    with open(SAVE_PATH, "a", encoding="utf-8") as f:
+                        f.write(f"{name},{req_url}\n")
+                    print(f"✅ {name} 捕获成功")
+                    return
+        print(f"❌ {name} 捕获失败: 未发现链接")
+    except Exception as e:
+        print(f"⚠️ {name} 报错: {e}")
+    finally:
+        if driver:
+            driver.quit()
 
 if __name__ == "__main__":
-    # Cleanup old files
-    if os.path.exists(TXT_PATH): os.remove(TXT_PATH)
-    
-    start_time = time.time()
-    print("🚀 Starting Parallel Scraper...")
-    
-    processes = []
-    for ch in channels:
-        # Launch independent processes
-        p = subprocess.Popen([PYTHON_EXE, TASK_SCRIPT, ch['name'], ch['url']])
-        processes.append(p)
-        time.sleep(1) # Small stagger for stability
-
-    # Wait for all processes to finish
-    for p in processes:
-        p.wait()
-
-    # Convert TXT to M3U
-    convert_to_m3u()
-    print(f"⏱️ Finished in {round(time.time() - start_time, 2)}s")
+    if len(sys.argv) >= 3:
+        run_capture(sys.argv[1], sys.argv[2])
