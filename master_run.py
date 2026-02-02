@@ -3,9 +3,9 @@ import time
 import os
 
 PYTHON_EXE = "python"
-TASK_SCRIPT = r"D:\py\get_nbtv_single.py"
-TXT_PATH = r"D:\py\nbtv_live.txt"
-M3U_PATH = r"D:\py\nbtv_live.m3u"
+TASK_SCRIPT = "get_nbtv_single.py" 
+SAVE_PATH = "nbtv_live.txt"
+M3U_PATH = "nbtv_live.m3u"
 
 channels = [
     {"name": "NBTV1-新闻综合", "url": "https://www.ncmc.nbtv.cn/gbds/folder8458/NBTV1/index.shtml"},
