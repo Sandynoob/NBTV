@@ -1,8 +1,8 @@
 import subprocess
 import time
 import os
+from webdriver_manager.chrome import ChromeDriverManager
 
-# GitHub 环境下直接用 python
 PYTHON_EXE = "python"
 TASK_SCRIPT = "get_nbtv_single.py"
 TXT_PATH = "nbtv_live.txt"
@@ -15,30 +15,42 @@ channels = [
     {"name": "NBTV4-影视剧", "url": "https://www.ncmc.nbtv.cn/gbds/folder8458/NBTV4/index.shtml"},
 ]
 
-if __name__ == "__main__":
-    if os.path.exists(TXT_PATH): os.remove(TXT_PATH)
-    
-    print("--- 启动并行抓取 ---")
+def main():
+    print("--- 预下载驱动防止并发冲突 ---")
+    # 关键：在这里先运行一次，确保所有子进程共享已下载好的驱动
+    ChromeDriverManager().install()
+
     processes = []
     for ch in channels:
+        print(f"🚀 启动任务: {ch['name']}")
+        # 显式传递参数，并用引号包裹防止 URL 里的特殊字符截断
         p = subprocess.Popen([PYTHON_EXE, TASK_SCRIPT, ch['name'], ch['url']])
         processes.append(p)
-        time.sleep(2) # 稍微错开启动时间，降低 CPU 负载
+        time.sleep(3) # 错开启动时间
 
     for p in processes:
         p.wait()
 
-    # 转换 M3U
-    if os.path.exists(TXT_PATH):
-        with open(TXT_PATH, "r", encoding="utf-8") as txt:
-            lines = txt.readlines()
-        with open(M3U_PATH, "w", encoding="utf-8") as m3u:
-            m3u.write("#EXTM3U\n")
-            for line in lines:
-                if "," in line:
-                    name, url = line.strip().split(",", 1)
-                    m3u.write(f"#EXTINF:-1,{name}\n{url}\n")
-        print("--- M3U 转换完成 ---")
-    else:
-        print("--- 抓取彻底失败，未生成 TXT ---")
+    # 合并逻辑保持不变...
+    results = []
+    for ch in channels:
+        tmp_file = f"{ch['name']}.tmp"
+        if os.path.exists(tmp_file):
+            with open(tmp_file, "r", encoding="utf-8") as f:
+                results.append(f.read().strip())
+            os.remove(tmp_file)
+
+    if results:
+        with open(TXT_PATH, "w", encoding="utf-8") as f:
+            f.write("\n".join(results))
+        with open(M3U_PATH, "w", encoding="utf-8") as f:
+            f.write("#EXTM3U\n")
+            for item in results:
+                name, url = item.split(",", 1)
+                f.write(f"#EXTINF:-1,{name}\n{url}\n")
+        print(f"✨ 成功合并 {len(results)} 个频道")
+
+if __name__ == "__main__":
+    main()
+
 
