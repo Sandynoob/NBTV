@@ -1,68 +1,58 @@
 import sys
 import json
 import time
+import os
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.common.by import By
+from selenium.webdriver.common.action_chains import ActionChains
+
+# ❗ 请确保此路径与你本地匹配
+DRIVER_PATH = r"D:\py\chromedriver.exe"
+# 临时存放 TXT，主脚本会汇总它
+SAVE_PATH = r"D:\py\nbtv_live.txt"
 
 def run_capture(name, url):
-    temp_file = f"{name}.tmp"
     options = Options()
-    options.add_argument('--headless=new')
-    options.add_argument('--no-sandbox')
-    options.add_argument('--disable-dev-shm-usage')
-    options.add_argument('--mute-audio')
-    # 模拟移动端，移动端网页通常鉴权更宽松，且加载更快
-    options.add_argument("user-agent=Mozilla/5.0 (iPhone; CPU iPhone OS 16_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.3 Mobile/15E148 Safari/604.1")
+    options.add_argument('--headless=new') 
     options.set_capability('goog:loggingPrefs', {'performance': 'ALL'})
+    
+    options.add_argument('--autoplay-policy=no-user-gesture-required')
+    options.add_argument('--mute-audio')
+    options.add_argument('--disable-gpu')
+    options.add_argument('--no-sandbox')
+    options.add_argument('--blink-settings=imagesEnabled=false')
+    options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
 
     try:
-        driver = webdriver.Chrome(options=options)
-        print(f"🚀 尝试激活: {url}")
+        service = Service(executable_path=DRIVER_PATH)
+        driver = webdriver.Chrome(service=service, options=options)
         driver.get(url)
         
-        # --- 暴力激活步骤 ---
-        time.sleep(10)
-        
-        # 1. 模拟点击页面所有可能的播放位置 (强制触发 JS 逻辑)
-        driver.execute_script("""
-            var clickEvent = new MouseEvent('click', { 'view': window, 'bubbles': True, 'cancelable': True });
-            document.querySelectorAll('div, video, canvas').forEach(el => el.dispatchEvent(clickEvent));
-        """)
-        
-        # 2. 模拟播放器所需的 resize 事件
-        driver.execute_script("window.dispatchEvent(new Event('resize'));")
-        
-        # 3. 循环检查流量 (每 5 秒查一次，直到抓到或超时)
-        print(f"⏳ 正在深度监控流量 (最高 60 秒)...")
-        found = False
-        for _ in range(12): 
-            time.sleep(5)
-            logs = driver.get_log('performance')
-            for entry in logs:
-                msg = json.loads(entry['message'])['message']
-                if msg['method'] == 'Network.requestWillBeSent':
-                    req_url = msg['params']['request']['url']
-                    # 只要包含 m3u8，不论带不带 key 先记录下来，看看区别
-                    if '.m3u8' in req_url and 'ncmc.nbtv.cn' in req_url:
-                        with open(temp_file, "w", encoding="utf-8") as f:
-                            f.write(f"{name},{req_url}")
-                        print(f"✅ 捕获到链接: {req_url[:60]}...")
-                        if 'auth_key=' in req_url:
-                            print("✨ 完美！抓到了带 Token 的链接")
-                            return
-                        found = True # 抓到了但不带 key，继续找更好的
-            if found and _ > 6: break # 如果抓到了普通的且等了很久还没带 key 的，就收工
-            
-        if not found:
-            print(f"❌ {name} 彻底无信号")
+        # 等待加载并模拟点击
+        time.sleep(5) 
+        try:
+            ActionChains(driver).move_by_offset(300, 300).click().perform()
+        except: pass
 
-    except Exception as e:
-        print(f"⚠️ 报错: {e}")
+        # 给播放器足够的时间获取带 auth_key 的链接
+        time.sleep(15) 
+
+        logs = driver.get_log('performance')
+        for entry in logs:
+            log_data = json.loads(entry['message'])['message']
+            if log_data['method'] == 'Network.requestWillBeSent':
+                req_url = log_data['params']['request']['url']
+                # 优先匹配带 auth_key 的链接
+                if '.m3u8' in req_url and 'ncmc.nbtv.cn' in req_url:
+                    with open(SAVE_PATH, "a", encoding="utf-8") as f:
+                        f.write(f"{name},{req_url}\n")
+                    print(f"✅ {name} 捕获成功")
+                    return
+        print(f"❌ {name} 未捕获到信号")
     finally:
         if 'driver' in locals(): driver.quit()
 
 if __name__ == "__main__":
-    if len(sys.argv) >= 3:
+    if len(sys.argv) > 2:
         run_capture(sys.argv[1], sys.argv[2])
