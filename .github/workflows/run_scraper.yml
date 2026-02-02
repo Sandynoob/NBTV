@@ -8,7 +8,7 @@ on:
 
 jobs:
   scrape:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted  # Changed from ubuntu-latest
     
     # 授予 Actions 写入仓库的权限
     permissions:
