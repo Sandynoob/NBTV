@@ -50,24 +50,38 @@ def run_capture(name, url):
         print("⏳ 正在监控网络流量 (30秒)...")
         time.sleep(30) 
 
-        logs = driver.get_log('performance')
+logs = driver.get_log('performance')
         m3u8_url = None
         
         for entry in logs:
             log_data = json.loads(entry['message'])['message']
             if log_data['method'] == 'Network.requestWillBeSent':
                 req_url = log_data['params']['request']['url']
-                # 精确匹配，排除广告干扰
-                if '.m3u8' in req_url and ('ncmc.nbtv.cn' in req_url or 'nbtv.cn' in req_url):
+                
+                # 核心改进：不仅匹配 .m3u8，还要确保包含鉴权关键字 'auth_key'
+                # 同时排除掉那些不带 Token 的静态资源文件
+                if '.m3u8' in req_url and 'auth_key=' in req_url:
                     m3u8_url = req_url
                     break
+        
+        # 如果上面没找到带 auth_key 的，再退而求其次找普通 m3u8
+        if not m3u8_url:
+            for entry in logs:
+                log_data = json.loads(entry['message'])['message']
+                if log_data['method'] == 'Network.requestWillBeSent':
+                    req_url = log_data['params']['request']['url']
+                    if '.m3u8' in req_url and 'ncmc.nbtv.cn' in req_url:
+                        m3u8_url = req_url
+                        break
 
         if m3u8_url:
+            # 确保写入的是包含完整参数的 req_url
             with open(SAVE_PATH, "a", encoding="utf-8") as f:
                 f.write(f"{name},{m3u8_url}\n")
-            print(f"✅ 捕获成功: {name}")
+            print(f"✅ 捕获成功 (含鉴权): {name}")
         else:
             print(f"❌ 捕获失败: {name}")
+
 
     except Exception as e:
         print(f"⚠️ 报错: {e}")
