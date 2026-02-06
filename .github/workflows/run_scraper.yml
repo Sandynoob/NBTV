@@ -1,12 +1,29 @@
 name: Build & Push Docker Image
+
 on: [push]
+
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v4
-      - name: Build and push
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          # 使用我們剛才創建的密鑰 CR_PAT
+          password: ${{ secrets.CR_PAT }} 
+
+      - name: Build and push Docker image
         uses: docker/build-push-action@v6
         with:
+          context: .
           push: true
-          tags: user/repo:latest
+          # 替換為您的 GitHub 用戶名/倉庫名
+          tags: ghcr.io/Sandynoob/NBTV:latest 
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
