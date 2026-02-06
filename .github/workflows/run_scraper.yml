@@ -40,3 +40,12 @@ jobs:
           # 啟用 GitHub Actions 快取加速後續構建
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+             - name: Export Image to Tar
+     run: docker save ghcr.io/sandynoob/nbtv:latest > nbtv.tar
+
+   - name: Upload Image Artifact
+     uses: actions/upload-artifact@v4
+     with:
+       name: docker-image
+       path: nbtv.tar
